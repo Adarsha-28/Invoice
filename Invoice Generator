@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Invoice Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h2, h3 {
+            color: #333;
+        }
+        form, .invoice {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        label, input {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding-bottom: 8px;
+            padding-top: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="button"], button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        input[type="button"]:hover, button:hover {
+            background-color: #45a049;
+        }
+        .invoice table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .invoice table, .invoice th, .invoice td {
+            border: 1px solid black;
+        }
+        .invoice th, .invoice td {
+            padding: 8px;
+            text-align: left;
+        }
+        #itemTable {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #itemTable, #itemTable th, #itemTable td {
+            border: 1px solid black;
+        }
+        #itemTable th, #itemTable td {
+            padding: 8px;
+            text-align: left;
+        }
+        .item-row {
+            margin-bottom: 10px;
+        }
+        .shift{
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <center><h2>Invoice Generation System</h2></center>
+    <form id="invoiceForm">
+        <h3>Customer Details</h3>
+        <label for="customerName">Name:</label>
+        <input type="text" id="customerName" name="customerName" required><br>
+        <label for="address">Address:</label>
+        <input type="text" id="address" name="address" required><br>
+
+        <h3>Item Details</h3>
+        <table id="itemTable">
+            <thead>
+                <tr>
+                    <th>Item Description</th>
+                    <th>Quantity</th>
+                    <th>Price per Unit</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="itemContainer">
+                <tr class="item-row">
+                    <td><input type="text" id="itemDescription1" name="itemDescription1" required></td>
+                    <td><input type="number" id="quantity1" name="quantity1" required></td>
+                    <td><input type="number" id="pricePerUnit1" name="pricePerUnit1" required></td>
+                    <td><button type="button" onclick="removeItem(this)">Remove</button></td>
+                </tr>
+            </tbody>
+        </table>
+        <button type="button" onclick="addItem()">Add Another Item</button><br><br>
+        <label for="taxRate">Tax Rate (%):</label>
+        <input type="number" id="taxRate" name="taxRate" value="10" required><br>
+        <input type="button" value="Generate Invoice" onclick="generateInvoice()">
+    </form>
+
+    <div id="invoiceOutput" class="invoice">
+        <!-- The generated invoice will be displayed here -->
+    </div>
+
+    <button id="downloadBtn" onclick="downloadInvoice()" style="display:none;">Download PDF</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+    <script>
+        let itemCount = 1;
+
+        function addItem() {
+            itemCount++;
+            const itemContainer = document.getElementById('itemContainer');
+            const itemRow = document.createElement('tr');
+            itemRow.classList.add('item-row');
+            itemRow.innerHTML = `
+                <td><input type="text" id="itemDescription${itemCount}" name="itemDescription${itemCount}" required></td>
+                <td><input type="number" id="quantity${itemCount}" name="quantity${itemCount}" required></td>
+                <td><input type="number" id="pricePerUnit${itemCount}" name="pricePerUnit${itemCount}" required></td>
+                <td><button type="button" onclick="removeItem(this)">Remove</button></td>
+            `;
+            itemContainer.appendChild(itemRow);
+        }
+
+        function removeItem(button) {
+            button.parentElement.parentElement.remove();
+            itemCount--;
+        }
+
+        function generateInvoice() {
+            var customerName = document.getElementById('customerName').value;
+            var address = document.getElementById('address').value;
+            var taxRate = parseFloat(document.getElementById('taxRate').value);
+            var invoiceOutput = `
+                <center><h2>SHOKAI SUPER MART</h2></center>
+                <p><strong>Customer Details:</strong></p>
+                <p>Name: ${customerName}</p>
+                <p>Address: ${address}</p>
+                <p><strong>Item Details:</strong></p>
+                <table>
+                    <tr>
+                        <th>Item Description</th>
+                        <th>Quantity</th>
+                        <th>Price per Unit</th>
+                        <th>Total Price</th>
+                    </tr>
+            `;
+            let subtotal = 0;
+            const rows = document.querySelectorAll('#itemContainer tr');
+            rows.forEach((row, index) => {
+                const itemDescription = row.querySelector(`[id^=itemDescription]`).value;
+                const quantity = parseInt(row.querySelector(`[id^=quantity]`).value);
+                const pricePerUnit = parseFloat(row.querySelector(`[id^=pricePerUnit]`).value);
+                const totalPrice = quantity * pricePerUnit;
+                subtotal += totalPrice;
+                invoiceOutput += `
+                    <tr>
+                        <td>${itemDescription}</td>
+                        <td>${quantity}</td>
+                        <td>₹${pricePerUnit.toFixed(2)}</td>
+                        <td>₹${totalPrice.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            var tax = (subtotal * taxRate) / 100;
+            var totalAmount = subtotal + tax;
+            invoiceOutput += `
+                </table>
+                <br>
+                <p class="shift">Subtotal: ₹${subtotal.toFixed(2)}</p>
+                <p class="shift">Tax (${taxRate}%): ₹${tax.toFixed(2)}</p>
+                <p class="shift"><strong>Total Amount Due: ₹${totalAmount.toFixed(2)}</strong></p>
+            `;
+            document.getElementById('invoiceOutput').innerHTML = invoiceOutput;
+            document.getElementById('downloadBtn').style.display = 'block';
+        }
+
+        function downloadInvoice() {
+            const element = document.getElementById('invoiceOutput');
+            html2pdf(element, {
+                margin: 1,
+                filename: 'invoice.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            });
+        }
+    </script>
+</body>
+</html>
